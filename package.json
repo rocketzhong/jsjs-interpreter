@@ -1,0 +1,16 @@
+{
+  "name": "jsjs-interpreter",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "kumlowhup <kumlowhup@yahoo.co.jp>",
+  "license": "MIT",
+  "dependencies": {
+    "acorn": "^8.7.0"
+  },
+  "engines": {
+    "node": ">= 0.10.0"
+  },
+  "scripts": {
+    "test": "node index.js"
+  }
+}
