@@ -15,26 +15,35 @@ class Value {
 }
 
 class Scope {
-    constructor(type, parent) {
+    constructor(initial /* 初始化变量 */, parent, type = 'block') {
         this.variables = {};
+        for (const key in initial) {
+            this.variables[key] = new Value(initial[key])
+        }
         this.type = type; // 'funcition' | 'block'
         this.parent = parent;
     }
     declare(kind = 'var', name, initValue = undefined) {
         if (kind === 'var') {
+            if (globalThis.global !== undefined && name === 'global') return new Value(initValue);
+            if (globalThis.window !== undefined && name === 'window') return new Value(initValue);
+            if (name === 'globalThis') return new Value(initValue);
+        }
+
+        if (kind === 'var') {
             // 把变量声明提升至函数体顶部
             let scope = this
             while (scope.parent && scope.type !== 'function') { scope = scope.parent }
             scope.variables[name] = new Value(initValue, 'var')
-            return this.variables[name]
+            return this.variables[name]?.value
         } else if (kind === 'let') {
             if (name in this.variables) { throw new SyntaxError(`Identifier ${name} has already been declared`) }
             this.variables[name] = new Value(initValue, 'let')
-            return this.variables[name]
+            return this.variables[name]?.value
         } else if (kind === 'const') {
             if (name in this.variables) { throw new SyntaxError(`Identifier ${name} has already been declared`) }
             this.variables[name] = new Value(initValue, 'const')
-            return this.variables[name]
+            return this.variables[name]?.value
         } else {
             throw new Error(`canjs: Invalid Variable Declaration Kind of "${kind}"`)
         }
@@ -44,12 +53,22 @@ class Scope {
             return this.variables[name].value
         }
         else if (this.parent) { return this.parent.get(name) }
-        else if (globalThis[name]) { return globalThis[name] }
+        else if (name in globalThis) { return globalThis[name] }
         throw new ReferenceError(`${name} is not defined`)
     }
     set(name, value) {
-        if (this.variables[name]) { this.variables[name].set(value) }
+        if (globalThis.global !== undefined && name === 'global') return new Value(value);
+        if (globalThis.window !== undefined && name === 'window') return new Value(value);
+        if (name === 'globalThis') return new Value(value);
+        if (name in this.variables) { this.variables[name].set(value) }
         else if (this.parent) { this.parent.set(name, value) }
+        else this.declare('var', name, value)
+    }
+    copyFromParent() {
+        if (this.parent === undefined) throw new Error('this scope has no parent!')
+        for (const valName in this.parent.variables) {
+            this.declare('let', valName, this.parent.get(valName))
+        }
     }
 }
 module.exports = Scope
